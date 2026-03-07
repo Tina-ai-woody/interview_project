@@ -35,12 +35,12 @@
 
 ---
 
-## 3) Baseline 模型範圍（保留 + 調整）
+## 3) Baseline + Boosting 模型範圍（保留 + 擴充）
 
 ### 3.1 Logistic Regression（主 baseline）
 - 用途：
   - 可解釋、穩定
-  - 在大資料下通常比樹模型更可控
+  - 在大資料下通常比傳統樹集成更可控
 - 設定：
   - `class_weight='balanced'`
   - `max_iter=1000`
@@ -56,6 +56,28 @@
 ### 3.3 Random Forest（可選）
 - 筆電上可能非常耗時，建議僅在 Stage A/B 試跑
 - 若耗時過高，可改列「補充實驗」而非主結果
+
+### 3.4 LightGBM（建議重點模型）
+- 用途：
+  - 在大規模表格資料通常比 Random Forest 更快、效果更好
+  - 對非線性與特徵交互有較強表現
+- 建議設定方向：
+  - `objective='binary'`
+  - `metric='average_precision'`（或同時計算 AUC）
+  - `is_unbalance=true` 或 `scale_pos_weight`
+  - `num_leaves`, `min_data_in_leaf`, `feature_fraction`, `bagging_fraction`
+  - 搭配 early stopping（以 Valid PR-AUC 監控）
+
+### 3.5 XGBoost（次重點模型，用於交叉驗證）
+- 用途：
+  - 與 LightGBM 做 boosting 家族的穩健對照
+  - 常在極度不平衡資料提供不錯的 precision-recall trade-off
+- 建議設定方向：
+  - `objective='binary:logistic'`
+  - `eval_metric='aucpr'`
+  - `scale_pos_weight`（依正負樣本比）
+  - `max_depth`, `min_child_weight`, `subsample`, `colsample_bytree`
+  - 搭配 early stopping（Valid 上監控 `aucpr`）
 
 ---
 
@@ -111,12 +133,15 @@
 
 ### Stage B（半天內）
 - Train 擴大到 50%
-- 重跑 Logistic（必要時加 Tree）
-- 比較 Stage A/B 指標穩定性
+- 重跑 Logistic
+- 新增 LightGBM（優先）
+- 比較 Stage A/B 指標穩定性（特別看 PR-AUC 與 Recall@Precision）
 
 ### Stage C（時間允許）
 - Logistic 上近全量 Train
-- Tree 模型保留為對照或小樣本補充
+- LightGBM 上較大資料量（必要時調降複雜度）
+- XGBoost 作為補充對照（可用較小資料或較少迭代）
+- Tree / Random Forest 保留為 baseline 參照
 - 固定最終分級規則到 Test
 
 ---
@@ -132,9 +157,29 @@
 
 ---
 
-## 9) 與原 baseline_model.md 的關係
+## 9) LightGBM / XGBoost 實作注意事項（補充）
+
+1. **不平衡處理**
+   - 先用正負樣本比估算 `scale_pos_weight`
+   - 與未加權版本都保留紀錄，避免只看單一設定
+
+2. **早停與驗證**
+   - 一律用時間切分後的 Valid 做 early stopping
+   - LightGBM 監控 `average_precision`；XGBoost 監控 `aucpr`
+
+3. **資源控制**
+   - 先限制樹深、葉節點與迭代數（例如 200~500 rounds 起步）
+   - 先求穩定結果，再慢慢加大模型容量
+
+4. **結果呈現**
+   - 至少比較：Logistic vs LightGBM vs XGBoost
+   - 用同一套 threshold 與 risk tier 規則，確保可比性
+
+---
+
+## 10) 與原 baseline_model.md 的關係
 
 - `baseline_model.md`：完整 baseline 架構與模型計畫
-- `baseline_model_revised.md`：在筆電環境下加入「開發子集 + 分階段放大」實作策略
+- `baseline_model_revised.md`：在筆電環境下加入「開發子集 + 分階段放大 + Boosting（LightGBM/XGBoost）」實作策略
 
 兩者互補，revised 版是執行層面的資源優化與落地版本。
