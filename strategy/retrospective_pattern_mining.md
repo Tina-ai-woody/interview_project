@@ -74,40 +74,58 @@
 
 ---
 
-## 4) 實作路線（分階段）
+## 4) 實作路線（對齊 baseline_model_revised：Stage A/B/C）
 
-## Stage 1：基礎帳戶特徵建表
-- 從交易級彙總到帳戶級（origin + dest 合併）
-- 先完成 A/B/C 類特徵（低成本高收益）
+本計畫沿用 `baseline_model_revised.ipynb` 的分階段訓練策略，降低資源壓力並保留可比性。
 
-## Stage 2：SNA 圖特徵
-- 建有向加權圖（node=account, edge=transfer）
-- 計算 PageRank、度分布、熵、社群
-- 視資源決定是否做 betweenness 近似
+## Stage A（快速迭代，Train 20% 子集）
+- 建立帳戶級特徵表（A/B/C 類）
+- 先做低成本 SNA（degree、entropy、counterparty concentration）
+- 跑模型：Logistic + Decision Tree
+- 目標：確認特徵管線可跑、初步看 PR-AUC 與 threshold 行為
 
-## Stage 3：關聯分析與模式萃取
-- 單變量比較：fraud_involved vs non-fraud
-- 多變量模型：LightGBM（或 XGBoost）+ SHAP
-- 輸出 top features 與 high-risk pattern 組合
+## Stage B（穩健驗證，Train 50% 子集）
+- 加入進階 SNA（PageRank、社群密度或近似 betweenness）
+- 跑模型：Logistic / Decision Tree / LightGBM
+- 開始做 SHAP（以 LightGBM 為主）
+- 目標：檢查 Stage A -> B 的增益是否穩定
+
+## Stage C（最終版，可行則近全量）
+- 使用最終候選特徵集（移除低貢獻高成本特徵）
+- 跑模型：Logistic / Decision Tree / LightGBM / XGBoost（可選）
+- 輸出最終關聯發現與風險分級規則
+- 目標：形成可報告、可重現的 retrospective findings
 
 ---
 
-## 5) 關聯分析方法
+## 5) 關聯分析方法（模型比較 + 指標框架）
 
 ## 5.1 單變量層級
 - 統計檢定：Mann-Whitney U / KS（連續特徵）
 - 效果量：Cliff’s delta 或 standardized mean difference
 - 類別特徵：卡方檢定 + Cramér’s V
 
-## 5.2 多變量層級
-- 模型：LightGBM / XGBoost（account-level label）
-- 評估：PR-AUC（不平衡資料）
-- 解釋：SHAP summary + dependence plots
+## 5.2 多變量模型比較（固定順序）
+1. Logistic Regression（可解釋 baseline）
+2. Decision Tree（非線性 baseline）
+3. LightGBM（主力）
+4. XGBoost（可選，穩健性對照）
 
-## 5.3 模式表述
+> 每個 Stage 都使用同一套特徵與切分規則，確保可比性。
+
+## 5.3 評估指標（主軸）
+- **PR-AUC**（主指標）
+- **Threshold scan**：在多個 threshold 下比較 Precision / Recall / F1
+- **Risk tier**（Low/Medium/High）：
+  - 各層 volume
+  - 各層 fraud rate
+  - High+Medium 對 fraud 的 capture 率
+
+## 5.4 模式表述
 形成「規則化描述」：
 - 例：`high burst + high entropy + high fan-out` -> 高風險群
 - 輸出風險 archetype（3~5 類）
+- 補充 SHAP summary + dependence plots（LightGBM / XGBoost）
 
 ---
 
@@ -119,9 +137,13 @@
    - 單變量關聯檢定與效果量
 3. `account_pattern_model_importance.csv`
    - 模型重要度 / SHAP摘要
-4. `retrospective_pattern_findings.md`
+4. `account_pattern_threshold_scan.csv`
+   - 各模型 threshold 掃描結果（precision/recall/f1）
+5. `account_pattern_risk_tier_summary.csv`
+   - Low/Medium/High 風險分級統計
+6. `retrospective_pattern_findings.md`
    - 高風險行為樣態、解釋與限制
-5. `notebooks/retrospective_pattern_mining.ipynb`
+7. `notebooks/retrospective_pattern_mining.ipynb`
    - 全流程可重現 notebook
 
 ---
