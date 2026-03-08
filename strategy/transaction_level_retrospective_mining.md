@@ -4,12 +4,21 @@
 
 ---
 
-## 1) 任務定位
+## 1) 任務定位（雙模式）
 
 - 分析單位：**交易級**（每筆交易一列）
 - 標籤：`isFraud`
 - 目的：找出與交易詐欺高度相關的特徵組合（關聯分析）
-- 後續銜接：將「可在交易當下取得」的特徵導入 baseline model
+
+本計畫採雙模式：
+
+### Mode A：Retrospective Exploratory（純回顧洞察）
+- 允許使用全歷史統計來挖掘關聯模式
+- 目標是洞察與行為規則，不主張即時預測可用性
+
+### Mode B：Leakage-safe Transfer（可遷移 baseline）
+- 只保留交易當下可取得、且 past-only 的特徵
+- 目標是把有效特徵導入 baseline model 做公平比較
 
 ---
 
@@ -73,8 +82,14 @@
 
 ---
 
-## 4) 防洩漏規則（交易級）
+## 4) 雙模式實作規則（Exploratory vs Transfer）
 
+## Mode A：Retrospective Exploratory（洞察優先）
+- 可使用全歷史聚合特徵（例如全期間 entropy、全期間 concentration）
+- 可快速辨識高關聯行為樣態
+- 產出重點：關聯強度、行為 archetypes、SHAP 解釋
+
+## Mode B：Leakage-safe Transfer（導入 baseline）
 對第 `i` 筆交易（時間 `t_i`）：
 \[
  f_i = g(\{e_j \mid t_j < t_i\})
@@ -84,6 +99,7 @@
 1. 逐筆（或時間塊）先取特徵，再更新狀態
 2. 禁止全資料聚合後回填
 3. 若用窗口特徵，窗口上界必須小於 `t_i`
+4. 只將 Mode B 通過的特徵導入 baseline 比較
 
 ---
 
@@ -117,9 +133,9 @@
 
 ---
 
-## 7) 特徵遷移策略（Retrospective -> Baseline）
+## 7) 特徵遷移策略（Mode A -> Mode B -> Baseline）
 
-將特徵分 3 類：
+將 Mode A 挖掘出的特徵分 3 類：
 
 ### A. 可直接遷移（推薦）
 - 嚴格 past-only 且交易當下可得特徵
