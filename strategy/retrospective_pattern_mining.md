@@ -57,21 +57,13 @@
 5. `mixed_size_index`（同時具高 small + high large 的程度）
 6. `threshold_proximity_ratio`（接近申報門檻區間比例，資料可行時）
 
-## C. 深夜/非典型時段活躍（若時間資訊足夠）
-
-> 若 `step` 可轉換到日內時間再實作；若不可，改做「異常 step 區間活躍 proxy」。
-
-1. `off_hour_activity_ratio`
-2. `off_hour_large_txn_ratio`
-3. `weekend_activity_ratio`（若可還原）
-
-## D. 閒置後突然活躍
+## C. 閒置後突然活躍
 
 1. `max_inactive_gap`
 2. `recent_burst_ratio`（最近窗口交易數 / 長窗口交易數）
 3. `post_dormancy_volume_spike`
 
-## E. SNA 結構特徵
+## D. SNA 結構特徵
 
 1. `pagerank`
 2. `betweenness_approx`（可用近似算法）
@@ -86,7 +78,7 @@
 
 ## Stage 1：基礎帳戶特徵建表
 - 從交易級彙總到帳戶級（origin + dest 合併）
-- 先完成 A/B/D 類特徵（低成本高收益）
+- 先完成 A/B/C 類特徵（低成本高收益）
 
 ## Stage 2：SNA 圖特徵
 - 建有向加權圖（node=account, edge=transfer）
