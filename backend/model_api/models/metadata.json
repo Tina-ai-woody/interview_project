@@ -1,0 +1,6 @@
+{
+  "model_name": "baseline_model_revised_mvp",
+  "model_version": "baseline_logit_v1",
+  "status": "fallback_heuristic_active",
+  "next_step": "replace fallback_score with trained model artifact loading"
+}
